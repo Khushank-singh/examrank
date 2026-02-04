@@ -7,30 +7,32 @@ function App() {
   const [total, setTotal] = useState(null);
   const [rank, setRank] = useState(null);
 
-  const calculateTotal = () => {
+  const predictRank = async () => {
     if (!physics || !chemistry || !maths) {
-      alert("Please enter all subject marks");
+      alert("Enter all marks");
       return;
     }
 
-    const sum =
-      Number(physics) +
-      Number(chemistry) +
-      Number(maths);
+    const res = await fetch("http://localhost:4000/predict", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ physics, chemistry, maths }),
+    });
 
-    setTotal(sum);
+    const data = await res.json();
 
-    // Temporary rank logic (will replace with ML later)
-    const estimatedRank = Math.max(1, 200000 - sum * 500);
-    setRank(estimatedRank);
+    setTotal(data.total);
+    setRank(data.rank);
   };
 
   const inputStyle = {
     width: "100%",
-    padding: "10px",
-    borderRadius: "8px",
+    padding: 10,
+    borderRadius: 8,
     border: "none",
-    marginBottom: "12px"
+    marginBottom: 12,
   };
 
   return (
@@ -39,7 +41,7 @@ function App() {
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
-      background: "linear-gradient(135deg,#020617,#020617)",
+      background: "#020617",
       color: "white"
     }}>
       <div style={{
@@ -50,28 +52,15 @@ function App() {
         boxShadow: "0 0 20px rgba(0,0,0,.6)"
       }}>
         <h1>ExamRank</h1>
-        <p>Enter your marks</p>
 
-        <input
-          style={inputStyle}
-          placeholder="Physics"
-          value={physics}
-          onChange={e => setPhysics(e.target.value)}
-        />
+        <input style={inputStyle} placeholder="Physics" value={physics}
+          onChange={e => setPhysics(e.target.value)} />
 
-        <input
-          style={inputStyle}
-          placeholder="Chemistry"
-          value={chemistry}
-          onChange={e => setChemistry(e.target.value)}
-        />
+        <input style={inputStyle} placeholder="Chemistry" value={chemistry}
+          onChange={e => setChemistry(e.target.value)} />
 
-        <input
-          style={inputStyle}
-          placeholder="Maths"
-          value={maths}
-          onChange={e => setMaths(e.target.value)}
-        />
+        <input style={inputStyle} placeholder="Maths" value={maths}
+          onChange={e => setMaths(e.target.value)} />
 
         <button style={{
           width: "100%",
@@ -79,17 +68,15 @@ function App() {
           borderRadius: 10,
           border: "none",
           background: "#2563eb",
-          color: "white",
-          cursor: "pointer"
-        }}
-        onClick={calculateTotal}>
+          color: "white"
+        }} onClick={predictRank}>
           Predict Rank
         </button>
 
-        {total !== null && (
+        {total && (
           <div style={{ marginTop: 15 }}>
-            <h3>Total Marks: {total}</h3>
-            <h3>Expected Rank: ~{rank}</h3>
+            <h3>Total: {total}</h3>
+            <h3>Rank: ~{rank}</h3>
           </div>
         )}
       </div>
