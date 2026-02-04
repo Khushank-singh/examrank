@@ -38,20 +38,23 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/examrank.git
-Go into project folder:
+
+
 cd examrank
-Install dependencies:
+
 npm install
-Run the app:
+
 npm run dev
-Open in browser:
+
 http://localhost:5173
+
 📈 Future Improvements
 Real ML-based rank prediction
 Login / Signup
 Prediction history
 Backend API
 Deployment
+
 👨‍💻 Author
 Khushank Singh
 B.Tech CSE Student
