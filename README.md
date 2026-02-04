@@ -36,7 +36,7 @@ This project is being developed as a full-stack application with future plans to
 
 Clone the repository:
 
-```bash
+
 git clone https://github.com/YOUR_USERNAME/examrank.git
 
 
