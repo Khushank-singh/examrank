@@ -16,3 +16,6 @@ __pycache__/
 
 # Logs
 *.log
+
+# ML model 
+ml-service/rank_model.pkl
