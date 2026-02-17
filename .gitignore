@@ -1,21 +1,6 @@
-# Node modules
 node_modules/
-
-# Database
-*.db
-
-# Python venv
 venv/
 __pycache__/
-
-# Environment files
+*.db
 .env
-
-# OS files
-.DS_Store
-
-# Logs
-*.log
-
-# ML model 
-ml-service/rank_model.pkl
+dist/
