@@ -2,8 +2,14 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 
-// import SQLite database (db.js)
+// import SQLite database
 const db = require("./db");
+
+// import auth routes
+const authRoutes = require("./auth");
+
+// import auth middleware
+const authMiddleware = require("./authMiddleware");
 
 const app = express();
 
@@ -11,26 +17,45 @@ app.use(cors());
 app.use(express.json());
 
 
-/* Test route */
+// ==============================
+// AUTH ROUTES
+// ==============================
+
+app.use("/auth", authRoutes);
+
+
+// ==============================
+// TEST ROUTE
+// ==============================
+
 app.get("/", (req, res) => {
     res.send("ExamRank Backend Running");
 });
 
 
-/* Prediction route */
-app.post("/predict", async (req, res) => {
+// ==============================
+// PREDICTION ROUTE (PROTECTED)
+// ==============================
+
+app.post("/predict", authMiddleware, async (req, res) => {
 
     try {
 
-        const { physics, chemistry, maths, biology, stream } = req.body;
+        const userId = req.userId;
 
-        const total =
-            (physics || 0) +
-            (chemistry || 0) +
-            (maths || 0) +
-            (biology || 0);
+        const {
+            physics = 0,
+            chemistry = 0,
+            maths = 0,
+            biology = 0,
+            stream = "PCM"
+        } = req.body;
 
-        // Call ML service
+
+        // ==============================
+        // CALL ML SERVICE
+        // ==============================
+
         const mlResponse = await axios.post(
             "http://127.0.0.1:5001/predict",
             {
@@ -38,42 +63,68 @@ app.post("/predict", async (req, res) => {
                 chemistry,
                 maths,
                 biology,
-                stream,
-                total
+                stream
             }
         );
 
-        const predicted_rank = mlResponse.data.predicted_rank;
 
-        // Save to database
+        // ==============================
+        // EXTRACT ML RESPONSE
+        // ==============================
+
+        const {
+            total_marks,
+            predicted_rank,
+            percentile,
+            confidence
+        } = mlResponse.data;
+
+
+        // ==============================
+        // SAVE INTO DATABASE
+        // ==============================
+
         db.run(
             `INSERT INTO predictions
-            (physics, chemistry, maths, biology, stream, total, predicted_rank)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            (user_id, physics, chemistry, maths, biology, stream, total, predicted_rank, percentile, confidence)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
+                userId,
                 physics,
                 chemistry,
                 maths,
                 biology,
                 stream,
-                total,
-                predicted_rank
+                total_marks,
+                predicted_rank,
+                percentile,
+                confidence
             ],
             function(err) {
 
                 if (err) {
-                    console.error("Database insert error:", err.message);
+
+                    console.error("Database error:", err.message);
+
                 } else {
-                    console.log("Prediction saved ID:", this.lastID);
+
+                    console.log("Prediction saved for user:", userId);
+
                 }
 
             }
         );
 
-        // Send response to frontend
+
+        // ==============================
+        // SEND RESPONSE TO FRONTEND
+        // ==============================
+
         res.json({
-            total,
-            predicted_rank
+            total_marks,
+            predicted_rank,
+            percentile,
+            confidence
         });
 
     }
@@ -90,26 +141,44 @@ app.post("/predict", async (req, res) => {
 });
 
 
-/* History route */
-app.get("/history", (req, res) => {
+// ==============================
+// HISTORY ROUTE (PROTECTED)
+// ==============================
+
+app.get("/history", authMiddleware, (req, res) => {
+
+    const userId = req.userId;
 
     db.all(
-        "SELECT * FROM predictions ORDER BY id DESC",
-        [],
+        `SELECT id,
+                physics,
+                chemistry,
+                maths,
+                biology,
+                stream,
+                total,
+                predicted_rank,
+                percentile,
+                confidence,
+                created_at
+         FROM predictions
+         WHERE user_id = ?
+         ORDER BY id DESC
+         LIMIT 8`,
+        [userId],
         (err, rows) => {
 
             if (err) {
-                console.error("Database fetch error:", err.message);
 
-                res.status(500).json({
+                console.error("Database error:", err.message);
+
+                return res.status(500).json({
                     error: "Database error"
                 });
 
-            } else {
-
-                res.json(rows);
-
             }
+
+            res.json(rows);
 
         }
     );
@@ -117,7 +186,14 @@ app.get("/history", (req, res) => {
 });
 
 
-/* Start server */
-app.listen(4000, () => {
-    console.log("Server running on port 4000");
+// ==============================
+// START SERVER
+// ==============================
+
+const PORT = 4000;
+
+app.listen(PORT, () => {
+
+    console.log(`Server running on port ${PORT}`);
+
 });

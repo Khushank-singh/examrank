@@ -1,64 +1,99 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 function History() {
 
     const [history, setHistory] = useState([]);
 
+    const token = localStorage.getItem("token");
+
+
     useEffect(() => {
 
-        fetch("http://127.0.0.1:4000/history")
-            .then(res => res.json())
-            .then(data => {
-                setHistory(data);
-            })
-            .catch(err => {
-                console.error("Error fetching history:", err);
-            });
+        fetch("http://localhost:4000/history", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            setHistory(data);
+        })
+        .catch(err => {
+            console.error(err);
+        });
 
     }, []);
 
+
+    if (history.length === 0) {
+
+        return <p>No predictions yet.</p>;
+
+    }
+
+
     return (
 
-        <div style={{ padding: "20px" }}>
+        <div>
 
-            <h2>Prediction History</h2>
+            {history.map((item) => (
 
-            <table border="1" cellPadding="10">
+                <div key={item.id} style={cardStyle}>
 
-                <thead>
-                    <tr>
-                        <th>Physics</th>
-                        <th>Chemistry</th>
-                        <th>Maths</th>
-                        <th>Total</th>
-                        <th>Rank</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
+                    <div>
+                        Stream: {item.stream}
+                    </div>
 
-                <tbody>
+                    <div>
+                        Total Marks: {item.total}
+                    </div>
 
-                    {history.map((item) => (
+                    <div>
+                        Rank: {item.predicted_rank}
+                    </div>
 
-                        <tr key={item.id}>
-                            <td>{item.physics}</td>
-                            <td>{item.chemistry}</td>
-                            <td>{item.maths}</td>
-                            <td>{item.total}</td>
-                            <td>{item.predicted_rank}</td>
-                            <td>{item.created_at}</td>
-                        </tr>
+                    <div>
+                        Percentile: {item.percentile}%
+                    </div>
 
-                    ))}
+                    <div>
+                        Confidence: {item.confidence}%
+                    </div>
 
-                </tbody>
+                    <div style={dateStyle}>
+                        {new Date(item.created_at).toLocaleString()}
+                    </div>
 
-            </table>
+                </div>
+
+            ))}
 
         </div>
 
     );
 
 }
+
+
+const cardStyle = {
+
+    background: "#020617",
+    padding: "12px",
+    borderRadius: "6px",
+    marginTop: "10px",
+    border: "1px solid #1e293b",
+    lineHeight: "1.6"
+
+};
+
+
+const dateStyle = {
+
+    fontSize: "12px",
+    color: "#94a3b8",
+    marginTop: "5px"
+
+};
+
 
 export default History;

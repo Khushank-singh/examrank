@@ -1,193 +1,304 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import History from "./History";
+import Auth from "./Auth";
+import RankChart from "./RankChart";
 
-function App() {
+export default function App(){
 
-  const [stream, setStream] = useState("PCM");
+  const token = localStorage.getItem("token");
 
-  const [physics, setPhysics] = useState("");
-  const [chemistry, setChemistry] = useState("");
-  const [maths, setMaths] = useState("");
-  const [biology, setBiology] = useState("");
+  const [stream,setStream]=useState("PCM");
+  const [physics,setPhysics]=useState("");
+  const [chemistry,setChemistry]=useState("");
+  const [maths,setMaths]=useState("");
+  const [biology,setBiology]=useState("");
 
-  const [total, setTotal] = useState(null);
-  const [rank, setRank] = useState(null);
+  const [rank,setRank]=useState(null);
+  const [percentile,setPercentile]=useState(null);
+  const [confidence,setConfidence]=useState(null);
+  const [totalMarks,setTotalMarks]=useState(null);
 
-  const predictRank = async () => {
 
-    if (
-      physics === "" ||
-      chemistry === "" ||
-      (stream === "PCM" && maths === "") ||
-      (stream === "PCB" && biology === "")
-    ) {
-      alert("Please enter all required marks");
-      return;
-    }
+  function logout(){
 
-    try {
+    localStorage.removeItem("token");
+    window.location.reload();
 
-      const requestData = {
-        physics: Number(physics),
-        chemistry: Number(chemistry),
-        maths: stream === "PCM" ? Number(maths) : 0,
-        biology: stream === "PCB" ? Number(biology) : 0,
-        stream: stream
-      };
+  }
 
-      const res = await fetch(
-        "http://localhost:4000/predict",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(requestData)
-        }
-      );
 
-      const data = await res.json();
+  async function predictRank(){
 
-      if (data.error) {
-        alert(data.error);
-        return;
-      }
+    const payload={
 
-      setTotal(data.total);
-      setRank(data.predicted_rank); // FIXED
+      physics:Number(physics)||0,
+      chemistry:Number(chemistry)||0,
+      maths:stream==="PCM"?Number(maths)||0:0,
+      biology:stream==="PCB"?Number(biology)||0:0,
+      stream
 
-    } catch (err) {
+    };
 
-      console.error("Prediction error:", err);
-      alert("Backend or ML service not responding");
+    const res=await fetch("http://localhost:4000/predict",{
 
-    }
-  };
+      method:"POST",
 
-  const inputStyle = {
-    width: "100%",
-    padding: 10,
-    borderRadius: 8,
-    border: "none",
-    marginBottom: 12
-  };
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer "+token
+      },
 
-  return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#020617",
-      color: "white",
-      padding: 20
-    }}>
+      body:JSON.stringify(payload)
 
-      {/* Prediction Card */}
-      <div style={{
-        margin: "auto",
-        background: "#020617",
-        padding: 30,
-        borderRadius: 16,
-        width: 350,
-        boxShadow: "0 0 20px rgba(0,0,0,.6)"
-      }}>
+    });
 
-        <h1>ExamRank</h1>
+    const data=await res.json();
 
-        <select
-          style={inputStyle}
-          value={stream}
-          onChange={(e) => {
+    setRank(data.predicted_rank);
+    setPercentile(data.percentile);
+    setConfidence(data.confidence);
+    setTotalMarks(data.total_marks);
 
-            const selectedStream = e.target.value;
-            setStream(selectedStream);
+  }
 
-            if (selectedStream === "PCM") {
-              setBiology("");
-            } else {
-              setMaths("");
-            }
 
-            setTotal(null);
-            setRank(null);
+  if(!token) return <Auth/>;
 
-          }}
+
+  return(
+
+    <motion.div
+
+      initial={{opacity:0}}
+      animate={{opacity:1}}
+      transition={{duration:0.6}}
+
+      className="min-h-screen bg-gradient-to-br from-slate-950 to-slate-900"
+    >
+
+      {/* Navbar */}
+
+      <div className="backdrop-blur-lg bg-white/5 border-b border-white/10">
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+
+            ExamRank Dashboard
+
+          </h1>
+
+          <motion.button
+
+            whileHover={{scale:1.1}}
+            whileTap={{scale:0.9}}
+
+            onClick={logout}
+
+            className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm sm:text-base"
+
+          >
+
+            Logout
+
+          </motion.button>
+
+        </div>
+
+      </div>
+
+
+      {/* Main Layout */}
+
+      <div className="max-w-7xl mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+
+
+        {/* Prediction Card */}
+
+        <motion.div
+
+          initial={{x:-50,opacity:0}}
+          animate={{x:0,opacity:1}}
+
+          className="backdrop-blur-lg bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 shadow-xl"
         >
-          <option value="PCM">PCM</option>
-          <option value="PCB">PCB</option>
-        </select>
 
-        <input
-          type="number"
-          style={inputStyle}
-          placeholder="Physics"
-          value={physics}
-          onChange={(e) => setPhysics(e.target.value)}
-        />
+          <h2 className="text-base sm:text-lg md:text-xl text-cyan-400 mb-4">
 
-        <input
-          type="number"
-          style={inputStyle}
-          placeholder="Chemistry"
-          value={chemistry}
-          onChange={(e) => setChemistry(e.target.value)}
-        />
+            Enter Your Marks
 
-        {stream === "PCM" && (
+          </h2>
+
+
+          <select
+
+            className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg text-sm sm:text-base"
+
+            value={stream}
+
+            onChange={e=>setStream(e.target.value)}
+
+          >
+
+            <option value="PCM">JEE (PCM)</option>
+
+            <option value="PCB">NEET (PCB)</option>
+
+          </select>
+
+
           <input
-            type="number"
-            style={inputStyle}
-            placeholder="Maths"
-            value={maths}
-            onChange={(e) => setMaths(e.target.value)}
-          />
-        )}
 
-        {stream === "PCB" && (
+            placeholder="Physics"
+
+            className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg"
+
+            value={physics}
+
+            onChange={e=>setPhysics(e.target.value)}
+
+          />
+
+
           <input
-            type="number"
-            style={inputStyle}
-            placeholder="Biology"
-            value={biology}
-            onChange={(e) => setBiology(e.target.value)}
-          />
-        )}
 
-        <button
-          style={{
-            width: "100%",
-            padding: 12,
-            borderRadius: 10,
-            border: "none",
-            background: "#2563eb",
-            color: "white",
-            cursor: "pointer",
-            fontWeight: "bold"
-          }}
-          onClick={predictRank}
+            placeholder="Chemistry"
+
+            className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg"
+
+            value={chemistry}
+
+            onChange={e=>setChemistry(e.target.value)}
+
+          />
+
+
+          {stream==="PCM" &&
+
+            <input
+
+              placeholder="Maths"
+
+              className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg"
+
+              value={maths}
+
+              onChange={e=>setMaths(e.target.value)}
+
+            />
+
+          }
+
+
+          {stream==="PCB" &&
+
+            <input
+
+              placeholder="Biology"
+
+              className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg"
+
+              value={biology}
+
+              onChange={e=>setBiology(e.target.value)}
+
+            />
+
+          }
+
+
+          <motion.button
+
+            whileHover={{scale:1.05}}
+            whileTap={{scale:0.95}}
+
+            onClick={predictRank}
+
+            className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base"
+
+          >
+
+            Predict Rank
+
+          </motion.button>
+
+
+          {/* Result */}
+
+          {rank &&
+
+            <motion.div
+
+              initial={{opacity:0,y:20}}
+              animate={{opacity:1,y:0}}
+
+              className="mt-4 sm:mt-6 p-3 sm:p-4 rounded-lg bg-gradient-to-r from-green-500/20 to-cyan-500/20 text-sm sm:text-base"
+            >
+
+              <p>Total Marks: {totalMarks}</p>
+
+              <p>Rank: {rank}</p>
+
+              <p>Percentile: {percentile}%</p>
+
+              <p>Confidence: {confidence}%</p>
+
+            </motion.div>
+
+          }
+
+
+          {/* Chart */}
+
+          {rank &&
+
+            <div className="mt-4">
+
+              <RankChart
+
+                marks={totalMarks}
+
+                rank={rank}
+
+              />
+
+            </div>
+
+          }
+
+        </motion.div>
+
+
+        {/* History */}
+
+        <motion.div
+
+          initial={{x:50,opacity:0}}
+          animate={{x:0,opacity:1}}
+
+          className="backdrop-blur-lg bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 shadow-xl"
         >
-          Predict Rank
-        </button>
 
-        {rank !== null && total !== null && (
-          <div style={{
-            marginTop: 20,
-            padding: 10,
-            background: "#0f172a",
-            borderRadius: 10
-          }}>
-            <h3>Total Marks: {total}</h3>
-            <h3>Expected Rank: ~{rank}</h3>
+          <h2 className="text-base sm:text-lg md:text-xl text-cyan-400 mb-4">
+
+            History
+
+          </h2>
+
+          <div className="h-[300px] sm:h-[400px] lg:h-[500px] overflow-y-auto">
+
+            <History/>
+
           </div>
-        )}
+
+        </motion.div>
+
 
       </div>
 
-      {/* History Section */}
-      <div style={{ marginTop: 40 }}>
-        <History />
-      </div>
+    </motion.div>
 
-    </div>
   );
-}
 
-export default App;
+}
