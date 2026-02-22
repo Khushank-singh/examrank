@@ -3,34 +3,42 @@ import { useEffect, useState } from "react";
 function History() {
 
     const [history, setHistory] = useState([]);
+    const API_URL = import.meta.env.VITE_API_URL;
 
     const token = localStorage.getItem("token");
 
-
     useEffect(() => {
 
-        fetch("http://localhost:4000/history", {
+        if (!token) return;
+
+        fetch(`${API_URL}/history`, {
             headers: {
                 "Authorization": "Bearer " + token
             }
         })
         .then(res => res.json())
         .then(data => {
-            setHistory(data);
+
+            if (Array.isArray(data)) {
+                setHistory(data);
+            } else {
+                console.error("Invalid history response:", data);
+            }
+
         })
         .catch(err => {
-            console.error(err);
+            console.error("History fetch error:", err);
         });
 
-    }, []);
+    }, [token]);
 
-
-    if (history.length === 0) {
-
-        return <p>No predictions yet.</p>;
-
+    if (!token) {
+        return <p>Please login to view history.</p>;
     }
 
+    if (history.length === 0) {
+        return <p>No predictions yet.</p>;
+    }
 
     return (
 
@@ -74,26 +82,19 @@ function History() {
 
 }
 
-
 const cardStyle = {
-
     background: "#020617",
     padding: "12px",
     borderRadius: "6px",
     marginTop: "10px",
     border: "1px solid #1e293b",
     lineHeight: "1.6"
-
 };
 
-
 const dateStyle = {
-
     fontSize: "12px",
     color: "#94a3b8",
     marginTop: "5px"
-
 };
-
 
 export default History;

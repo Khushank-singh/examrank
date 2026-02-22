@@ -4,12 +4,13 @@ function Login() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const API_URL = import.meta.env.VITE_API_URL;
 
     async function handleLogin() {
 
         try {
 
-            const response = await fetch("http://localhost:4000/auth/login", {
+            const response = await fetch(`${API_URL}/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -26,13 +27,14 @@ function Login() {
 
             } else {
 
-                alert(data.error);
+                alert(data.error || "Login failed");
 
             }
 
         } catch (error) {
 
-            alert("Login failed");
+            console.error("Login error:", error);
+            alert("Server connection failed");
 
         }
 

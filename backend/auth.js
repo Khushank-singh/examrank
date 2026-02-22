@@ -5,8 +5,10 @@ const db = require("./db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-const SECRET = "examrank_secret_key";
-
+// ======================
+// USE ENV SECRET (PRODUCTION SAFE)
+// ======================
+const SECRET = process.env.JWT_SECRET || "examrank_dev_secret";
 
 // ======================
 // SIGNUP
@@ -29,19 +31,19 @@ router.post("/signup", async (req, res) => {
             `INSERT INTO users (name, email, password)
              VALUES (?, ?, ?)`,
             [name, email, hashedPassword],
-            function(err) {
+            function (err) {
 
                 if (err) {
-
+                    console.error("Signup error:", err.message);
                     return res.status(400).json({
                         error: "Email already exists"
                     });
-
                 }
 
                 const token = jwt.sign(
                     { userId: this.lastID },
-                    SECRET
+                    SECRET,
+                    { expiresIn: "7d" }
                 );
 
                 res.json({
@@ -52,15 +54,17 @@ router.post("/signup", async (req, res) => {
             }
         );
 
-    }
-    catch {
+    } catch (error) {
+
+        console.error("Server error:", error.message);
+
         res.status(500).json({
             error: "Server error"
         });
+
     }
 
 });
-
 
 // ======================
 // LOGIN
@@ -69,17 +73,28 @@ router.post("/login", (req, res) => {
 
     const { email, password } = req.body;
 
+    if (!email || !password) {
+        return res.status(400).json({
+            error: "All fields required"
+        });
+    }
+
     db.get(
         `SELECT * FROM users WHERE email = ?`,
         [email],
         async (err, user) => {
 
-            if (!user) {
+            if (err) {
+                console.error("Database error:", err.message);
+                return res.status(500).json({
+                    error: "Server error"
+                });
+            }
 
+            if (!user) {
                 return res.status(400).json({
                     error: "Invalid email or password"
                 });
-
             }
 
             const valid = await bcrypt.compare(
@@ -88,16 +103,15 @@ router.post("/login", (req, res) => {
             );
 
             if (!valid) {
-
                 return res.status(400).json({
                     error: "Invalid email or password"
                 });
-
             }
 
             const token = jwt.sign(
                 { userId: user.id },
-                SECRET
+                SECRET,
+                { expiresIn: "7d" }
             );
 
             res.json({
