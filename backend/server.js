@@ -13,20 +13,36 @@ const authMiddleware = require("./authMiddleware");
 
 const app = express();
 
+// ==============================
+// CORS CONFIGURATION (FIXED)
+// ==============================
+
+const allowedOrigins = [
+    "http://localhost:5173",          // local dev
+    "https://examrank.vercel.app"     // 🔥 REPLACE with your actual Vercel URL
+];
+
 app.use(cors({
-    origin: "*",
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
 }));
-app.use(express.json());
 
+app.options("*", cors());
+
+app.use(express.json());
 
 // ==============================
 // AUTH ROUTES
 // ==============================
 
 app.use("/auth", authRoutes);
-
 
 // ==============================
 // TEST ROUTE
@@ -35,7 +51,6 @@ app.use("/auth", authRoutes);
 app.get("/", (req, res) => {
     res.send("ExamRank Backend Running");
 });
-
 
 // ==============================
 // PREDICTION ROUTE (PROTECTED)
@@ -55,11 +70,7 @@ app.post("/predict", authMiddleware, async (req, res) => {
             stream = "PCM"
         } = req.body;
 
-
-        // ==============================
         // CALL ML SERVICE
-        // ==============================
-
         const mlResponse = await axios.post(
             "https://examrank-ml-service.onrender.com/predict",
             {
@@ -71,11 +82,6 @@ app.post("/predict", authMiddleware, async (req, res) => {
             }
         );
 
-
-        // ==============================
-        // EXTRACT ML RESPONSE
-        // ==============================
-
         const {
             total_marks,
             predicted_rank,
@@ -83,11 +89,7 @@ app.post("/predict", authMiddleware, async (req, res) => {
             confidence
         } = mlResponse.data;
 
-
-        // ==============================
         // SAVE INTO DATABASE
-        // ==============================
-
         db.run(
             `INSERT INTO predictions
             (user_id, physics, chemistry, maths, biology, stream, total, predicted_rank, percentile, confidence)
@@ -104,25 +106,14 @@ app.post("/predict", authMiddleware, async (req, res) => {
                 percentile,
                 confidence
             ],
-            function(err) {
-
+            function (err) {
                 if (err) {
-
                     console.error("Database error:", err.message);
-
                 } else {
-
                     console.log("Prediction saved for user:", userId);
-
                 }
-
             }
         );
-
-
-        // ==============================
-        // SEND RESPONSE TO FRONTEND
-        // ==============================
 
         res.json({
             total_marks,
@@ -131,8 +122,7 @@ app.post("/predict", authMiddleware, async (req, res) => {
             confidence
         });
 
-    }
-    catch (error) {
+    } catch (error) {
 
         console.error("Prediction error:", error.message);
 
@@ -143,7 +133,6 @@ app.post("/predict", authMiddleware, async (req, res) => {
     }
 
 });
-
 
 // ==============================
 // HISTORY ROUTE (PROTECTED)
@@ -173,31 +162,22 @@ app.get("/history", authMiddleware, (req, res) => {
         (err, rows) => {
 
             if (err) {
-
                 console.error("Database error:", err.message);
-
-                return res.status(500).json({
-                    error: "Database error"
-                });
-
+                return res.status(500).json({ error: "Database error" });
             }
 
             res.json(rows);
-
         }
     );
 
 });
 
-
 // ==============================
-// START SERVER
+// START SERVER (Render Compatible)
 // ==============================
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
-
     console.log(`Server running on port ${PORT}`);
-
 });
