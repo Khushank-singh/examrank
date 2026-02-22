@@ -8,11 +8,13 @@ function Auth() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
+    const API_URL = import.meta.env.VITE_API_URL;
+
     async function handleSubmit() {
 
         const url = isLogin
-            ? "http://localhost:4000/auth/login"
-            : "http://localhost:4000/auth/signup";
+            ? `${API_URL}/auth/login`
+            : `${API_URL}/auth/signup`;
 
         const body = isLogin
             ? { email, password }
@@ -46,12 +48,13 @@ function Auth() {
 
             } else {
 
-                alert(data.error);
+                alert(data.error || "Request failed");
 
             }
 
         } catch (error) {
 
+            console.error("Auth error:", error);
             alert("Server error");
 
         }
