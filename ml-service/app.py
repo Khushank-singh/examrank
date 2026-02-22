@@ -205,7 +205,4 @@ def predict():
 # =====================================================
 
 if __name__ == "__main__":
-
-    print("ML Prediction Service Running on Port 5001")
-
-    app.run(port=5001, debug=True)
+    app.run(host="0.0.0.0", port=5001)
