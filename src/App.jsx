@@ -40,7 +40,7 @@ export default function App(){
 
     };
 
-    const res=await fetch("http://localhost:4000/predict",{
+    const res=await fetch("https://examrank-backend.onrender.com/predict",{
 
       method:"POST",
 
