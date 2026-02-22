@@ -57,7 +57,7 @@ app.post("/predict", authMiddleware, async (req, res) => {
         // ==============================
 
         const mlResponse = await axios.post(
-            "http://127.0.0.1:5001/predict",
+            "https://examrank-ml-service.onrender.com/predict",
             {
                 physics,
                 chemistry,
