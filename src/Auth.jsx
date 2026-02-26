@@ -13,89 +13,68 @@ function Auth() {
 
     const API_URL = import.meta.env.VITE_API_URL;
 
-    async function handleSubmit() {
+async function handleSubmit() {
 
-        if (!email || !password || (!isLogin && !name)) {
-            setError("Please fill all fields");
-            return;
-        }
+    if (!email || !password || (!isLogin && !name)) {
+        setError("Please fill all fields");
+        return;
+    }
 
-        setLoading(true);
-        setError("");
+    setLoading(true);
+    setError("");
+    setVerifyLink("");
 
-        const url = isLogin
-            ? `${API_URL}/auth/login`
-            : `${API_URL}/auth/signup`;
+    const url = isLogin
+        ? `${API_URL}/auth/login`
+        : `${API_URL}/auth/signup`;
 
-        const body = isLogin
-            ? { email, password }
-            : { name, email, password };
+    const body = isLogin
+        ? { email, password }
+        : { name, email, password };
 
-        try {
+    try {
 
-            const res = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(body)
-            });
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+        });
 
-            const data = await res.json();
+        const data = await res.json();
 
-            if (res.ok) {
+        if (res.ok) {
 
-                if (isLogin) {
-
-                    localStorage.setItem("token", data.token);
-                    window.location.reload();
-
-                } else {
-
-                    // Show verification link after signup
-                    setVerifyLink(data.verifyLink);
-                    setName("");
-                    setPassword("");
-                }
-
+            if (isLogin) {
+                localStorage.setItem("token", data.token);
+                window.location.reload();
             } else {
-
-                // 🔥 If account not verified, show verification link again
-                if (data.error === "Please verify your account before logging in.") {
-
-                    setError("Please verify your account first.");
-                    
-                    // Try to regenerate verification link by calling signup again silently
-                    const resend = await fetch(`${API_URL}/auth/signup`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({ name: name || "User", email, password })
-                    });
-
-                    const resendData = await resend.json();
-
-                    if (resendData.verifyLink) {
-                        setVerifyLink(resendData.verifyLink);
-                    }
-
-                } else {
-                    setError(data.error || "Request failed");
-                }
-
+                setVerifyLink(data.verifyLink);
+                setName("");
+                setPassword("");
             }
 
-        } catch (error) {
+        } else {
 
-            console.error("Auth error:", error);
-            setError("Server error");
+            setError(data.error || "Request failed");
 
-        } finally {
-            setLoading(false);
+            // 🔥 THIS IS IMPORTANT
+            if (data.verifyLink) {
+                setVerifyLink(data.verifyLink);
+            }
+
         }
 
+    } catch (error) {
+
+        console.error("Auth error:", error);
+        setError("Server error");
+
+    } finally {
+        setLoading(false);
     }
+}
 
     return (
 
