@@ -124,11 +124,15 @@ router.post("/login", (req, res) => {
             }
 
             if (!user.is_verified) {
-                return res.status(403).json({
-                    error: "Please verify your account before logging in."
-                });
-            }
 
+  const verifyLink =
+    `https://examrank-backend.onrender.com/auth/verify/${user.verification_token}`;
+
+  return res.status(403).json({
+    error: "Please verify your account before logging in.",
+    verifyLink
+  });
+}
             const valid = await bcrypt.compare(password, user.password);
 
             if (!valid) {
