@@ -22,7 +22,6 @@ function Auth() {
 
         setLoading(true);
         setError("");
-        setVerifyLink("");
 
         const url = isLogin
             ? `${API_URL}/auth/login`
@@ -53,16 +52,37 @@ function Auth() {
 
                 } else {
 
-                    // 🔥 Show verification link
+                    // Show verification link after signup
                     setVerifyLink(data.verifyLink);
-                    setIsLogin(true);
                     setName("");
                     setPassword("");
                 }
 
             } else {
 
-                setError(data.error || "Request failed");
+                // 🔥 If account not verified, show verification link again
+                if (data.error === "Please verify your account before logging in.") {
+
+                    setError("Please verify your account first.");
+                    
+                    // Try to regenerate verification link by calling signup again silently
+                    const resend = await fetch(`${API_URL}/auth/signup`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ name: name || "User", email, password })
+                    });
+
+                    const resendData = await resend.json();
+
+                    if (resendData.verifyLink) {
+                        setVerifyLink(resendData.verifyLink);
+                    }
+
+                } else {
+                    setError(data.error || "Request failed");
+                }
 
             }
 
@@ -142,7 +162,7 @@ function Auth() {
                         borderRadius: "6px"
                     }}>
                         <p style={{ color: "#10b981" }}>
-                            Account created successfully!
+                            Click below to verify your account:
                         </p>
                         <a
                             href={verifyLink}
@@ -150,7 +170,7 @@ function Auth() {
                             rel="noopener noreferrer"
                             style={{ color: "#3b82f6" }}
                         >
-                            Click here to verify your account
+                            Verify Account
                         </a>
                     </div>
                 )}
@@ -163,7 +183,6 @@ function Auth() {
                             setEmail("");
                             setPassword("");
                             setError("");
-                            setVerifyLink("");
                         }
                     }}
                     style={{
