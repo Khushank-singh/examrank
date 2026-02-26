@@ -5,28 +5,14 @@ const db = require("./db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
 
 // ======================
 // ENV CONFIG
 // ======================
 const SECRET = process.env.JWT_SECRET || "examrank_dev_secret";
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
 
 // ======================
-// EMAIL TRANSPORTER
-// ======================
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: EMAIL_USER,
-        pass: EMAIL_PASS
-    }
-});
-
-// ======================
-// SIGNUP (WITH EMAIL VERIFICATION)
+// SIGNUP (SIMULATED EMAIL VERIFICATION)
 // ======================
 router.post("/signup", async (req, res) => {
 
@@ -45,7 +31,7 @@ router.post("/signup", async (req, res) => {
             `INSERT INTO users (name, email, password, is_verified, verification_token)
              VALUES (?, ?, ?, 0, ?)`,
             [name, email, hashedPassword, verificationToken],
-            async function (err) {
+            function (err) {
 
                 if (err) {
                     console.error("Signup error:", err.message);
@@ -57,32 +43,13 @@ router.post("/signup", async (req, res) => {
                 const verifyLink =
                     `https://examrank-backend.onrender.com/auth/verify/${verificationToken}`;
 
-                try {
+                // Log verification link (for testing)
+                console.log("Verification link:", verifyLink);
 
-                    await transporter.sendMail({
-                        from: EMAIL_USER,
-                        to: email,
-                        subject: "Verify Your Email - ExamRank",
-                        html: `
-                            <h3>Welcome to ExamRank</h3>
-                            <p>Please click below to verify your email:</p>
-                            <a href="${verifyLink}">Verify Email</a>
-                        `
-                    });
-
-                    res.json({
-                        message: "Signup successful. Please check your email to verify your account."
-                    });
-
-                } catch (emailError) {
-
-                    console.error("Email send error:", emailError.message);
-
-                    res.status(500).json({
-                        error: "Signup done but email failed to send."
-                    });
-
-                }
+                res.json({
+                    message: "Signup successful. Please verify your account.",
+                    verifyLink: verifyLink
+                });
 
             }
         );
@@ -158,7 +125,7 @@ router.post("/login", (req, res) => {
 
             if (!user.is_verified) {
                 return res.status(403).json({
-                    error: "Please verify your email before logging in."
+                    error: "Please verify your account before logging in."
                 });
             }
 
