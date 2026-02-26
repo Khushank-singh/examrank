@@ -8,16 +8,21 @@ function Auth() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
 
+    const [error, setError] = useState("");
+    const [verifyLink, setVerifyLink] = useState("");
+
     const API_URL = import.meta.env.VITE_API_URL;
 
     async function handleSubmit() {
 
         if (!email || !password || (!isLogin && !name)) {
-            alert("Please fill all fields");
+            setError("Please fill all fields");
             return;
         }
 
         setLoading(true);
+        setError("");
+        setVerifyLink("");
 
         const url = isLogin
             ? `${API_URL}/auth/login`
@@ -48,23 +53,23 @@ function Auth() {
 
                 } else {
 
-                    alert("Signup successful. Please login.");
+                    // 🔥 Show verification link
+                    setVerifyLink(data.verifyLink);
                     setIsLogin(true);
                     setName("");
-                    setEmail("");
                     setPassword("");
                 }
 
             } else {
 
-                alert(data.error || "Request failed");
+                setError(data.error || "Request failed");
 
             }
 
         } catch (error) {
 
             console.error("Auth error:", error);
-            alert("Server error");
+            setError("Server error");
 
         } finally {
             setLoading(false);
@@ -123,6 +128,33 @@ function Auth() {
                             : "Signup"}
                 </button>
 
+                {error && (
+                    <p style={{ color: "red", marginTop: "10px" }}>
+                        {error}
+                    </p>
+                )}
+
+                {verifyLink && (
+                    <div style={{
+                        marginTop: "15px",
+                        background: "#022c22",
+                        padding: "10px",
+                        borderRadius: "6px"
+                    }}>
+                        <p style={{ color: "#10b981" }}>
+                            Account created successfully!
+                        </p>
+                        <a
+                            href={verifyLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "#3b82f6" }}
+                        >
+                            Click here to verify your account
+                        </a>
+                    </div>
+                )}
+
                 <p
                     onClick={() => {
                         if (!loading) {
@@ -130,6 +162,8 @@ function Auth() {
                             setName("");
                             setEmail("");
                             setPassword("");
+                            setError("");
+                            setVerifyLink("");
                         }
                     }}
                     style={{
