@@ -3,14 +3,21 @@ import { useState } from "react";
 function Auth() {
 
     const [isLogin, setIsLogin] = useState(true);
-
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const API_URL = import.meta.env.VITE_API_URL;
 
     async function handleSubmit() {
+
+        if (!email || !password || (!isLogin && !name)) {
+            alert("Please fill all fields");
+            return;
+        }
+
+        setLoading(true);
 
         const url = isLogin
             ? `${API_URL}/auth/login`
@@ -43,7 +50,9 @@ function Auth() {
 
                     alert("Signup successful. Please login.");
                     setIsLogin(true);
-
+                    setName("");
+                    setEmail("");
+                    setPassword("");
                 }
 
             } else {
@@ -57,6 +66,8 @@ function Auth() {
             console.error("Auth error:", error);
             alert("Server error");
 
+        } finally {
+            setLoading(false);
         }
 
     }
@@ -64,7 +75,6 @@ function Auth() {
     return (
 
         <div style={containerStyle}>
-
             <div style={cardStyle}>
 
                 <h2 style={{ color: "white", marginBottom: "20px" }}>
@@ -99,16 +109,32 @@ function Auth() {
 
                 <button
                     onClick={handleSubmit}
-                    style={buttonStyle}
+                    disabled={loading}
+                    style={{
+                        ...buttonStyle,
+                        opacity: loading ? 0.6 : 1,
+                        cursor: loading ? "not-allowed" : "pointer"
+                    }}
                 >
-                    {isLogin ? "Login" : "Signup"}
+                    {loading
+                        ? "Processing..."
+                        : isLogin
+                            ? "Login"
+                            : "Signup"}
                 </button>
 
                 <p
-                    onClick={() => setIsLogin(!isLogin)}
+                    onClick={() => {
+                        if (!loading) {
+                            setIsLogin(!isLogin);
+                            setName("");
+                            setEmail("");
+                            setPassword("");
+                        }
+                    }}
                     style={{
                         color: "#3b82f6",
-                        cursor: "pointer",
+                        cursor: loading ? "not-allowed" : "pointer",
                         marginTop: "15px"
                     }}
                 >
@@ -118,7 +144,6 @@ function Auth() {
                 </p>
 
             </div>
-
         </div>
 
     );
@@ -163,8 +188,7 @@ const buttonStyle = {
     border: "none",
     background: "#2563eb",
     color: "white",
-    fontWeight: "bold",
-    cursor: "pointer"
+    fontWeight: "bold"
 };
 
 export default Auth;

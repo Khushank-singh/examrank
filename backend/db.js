@@ -25,9 +25,24 @@ db.serialize(() => {
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        is_verified INTEGER DEFAULT 0,
+        verification_token TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
     `);
+
+    // SAFE COLUMN ADD (for older deployments)
+    db.run(`ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0`, (err) => {
+        if (err && !err.message.includes("duplicate column")) {
+            console.error(err.message);
+        }
+    });
+
+    db.run(`ALTER TABLE users ADD COLUMN verification_token TEXT`, (err) => {
+        if (err && !err.message.includes("duplicate column")) {
+            console.error(err.message);
+        }
+    });
 
     // PREDICTIONS TABLE
     db.run(`
@@ -48,18 +63,8 @@ db.serialize(() => {
     )
     `);
 
-    // SAFE COLUMN ADD (for older deployments)
-    db.run(`ALTER TABLE predictions ADD COLUMN percentile REAL`, (err) => {
-        if (err && !err.message.includes("duplicate column")) {
-            console.error(err.message);
-        }
-    });
-
-    db.run(`ALTER TABLE predictions ADD COLUMN confidence REAL`, (err) => {
-        if (err && !err.message.includes("duplicate column")) {
-            console.error(err.message);
-        }
-    });
+    // INDEX FOR FAST HISTORY QUERY
+    db.run(`CREATE INDEX IF NOT EXISTS idx_user_id ON predictions(user_id)`);
 
 });
 
