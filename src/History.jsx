@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 
-function History() {
+function History({ refresh }) {
 
-    const [history, setHistory] = useState([]);
     const API_URL = import.meta.env.VITE_API_URL;
+    const [history, setHistory] = useState([]);
+    const [error, setError] = useState("");
 
     const token = localStorage.getItem("token");
 
@@ -22,79 +23,41 @@ function History() {
             if (Array.isArray(data)) {
                 setHistory(data);
             } else {
-                console.error("Invalid history response:", data);
+                setError("Failed to load history.");
             }
 
         })
-        .catch(err => {
-            console.error("History fetch error:", err);
+        .catch(() => {
+            setError("Server error.");
         });
 
-    }, [token]);
+    }, [token, refresh]);
 
-    if (!token) {
-        return <p>Please login to view history.</p>;
-    }
-
-    if (history.length === 0) {
-        return <p>No predictions yet.</p>;
-    }
+    if (!token) return <p>Please login.</p>;
+    if (error) return <p className="text-red-400">{error}</p>;
+    if (history.length === 0) return <p>No predictions yet.</p>;
 
     return (
-
-        <div>
-
+        <div className="max-h-[400px] overflow-y-auto space-y-3 pr-2">
             {history.map((item) => (
-
-                <div key={item.id} style={cardStyle}>
-
-                    <div>
-                        Stream: {item.stream}
-                    </div>
-
-                    <div>
-                        Total Marks: {item.total}
-                    </div>
-
-                    <div>
-                        Rank: {item.predicted_rank}
-                    </div>
-
-                    <div>
-                        Percentile: {item.percentile}%
-                    </div>
-
-                    <div>
-                        Confidence: {item.confidence}%
-                    </div>
-
-                    <div style={dateStyle}>
+                <div
+                    key={item.id}
+                    className="bg-slate-700 p-4 rounded-lg shadow text-sm"
+                >
+                    <p className="text-cyan-400 font-semibold">
+                        {item.stream}
+                    </p>
+                    <p>Total: {item.total}</p>
+                    <p>Rank: {item.predicted_rank}</p>
+                    <p>Percentile: {item.percentile}%</p>
+                    <p>Confidence: {item.confidence}%</p>
+                    <p className="text-xs text-gray-400 mt-1">
                         {new Date(item.created_at).toLocaleString()}
-                    </div>
-
+                    </p>
                 </div>
-
             ))}
-
         </div>
-
     );
-
 }
-
-const cardStyle = {
-    background: "#020617",
-    padding: "12px",
-    borderRadius: "6px",
-    marginTop: "10px",
-    border: "1px solid #1e293b",
-    lineHeight: "1.6"
-};
-
-const dateStyle = {
-    fontSize: "12px",
-    color: "#94a3b8",
-    marginTop: "5px"
-};
 
 export default History;

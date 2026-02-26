@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import History from "./History";
 import Auth from "./Auth";
-import RankChart from "./RankChart";
 
 export default function App() {
 
+  const API_URL = import.meta.env.VITE_API_URL;
   const token = localStorage.getItem("token");
 
   const [stream, setStream] = useState("PCM");
@@ -20,6 +19,8 @@ export default function App() {
   const [totalMarks, setTotalMarks] = useState(null);
 
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [refreshHistory, setRefreshHistory] = useState(false);
 
   function logout() {
     localStorage.removeItem("token");
@@ -28,8 +29,9 @@ export default function App() {
 
   async function predictRank() {
 
-    if (loading) return; // prevent spam clicking
+    if (loading) return;
     setLoading(true);
+    setError("");
 
     try {
 
@@ -41,22 +43,19 @@ export default function App() {
         stream
       };
 
-      const res = await fetch(
-        "https://examrank-backend.onrender.com/predict",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
-          },
-          body: JSON.stringify(payload)
-        }
-      );
+      const res = await fetch(`${API_URL}/predict`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify(payload)
+      });
 
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || "Prediction failed");
+        setError(data.error || "Prediction failed");
         return;
       }
 
@@ -65,9 +64,11 @@ export default function App() {
       setConfidence(data.confidence);
       setTotalMarks(data.total_marks);
 
-    } catch (error) {
-      console.error("Prediction error:", error);
-      alert("Server error");
+      // 🔥 refresh history instantly
+      setRefreshHistory(prev => !prev);
+
+    } catch (err) {
+      setError("Server error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -76,47 +77,30 @@ export default function App() {
   if (!token) return <Auth />;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-      className="min-h-screen bg-gradient-to-br from-slate-950 to-slate-900"
-    >
+    <div className="min-h-screen bg-slate-900 text-white p-6">
 
-      {/* Navbar */}
-      <div className="backdrop-blur-lg bg-white/5 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            ExamRank Dashboard
-          </h1>
-
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={logout}
-            className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm sm:text-base"
-          >
-            Logout
-          </motion.button>
-        </div>
+      <div className="flex justify-between mb-6">
+        <h1 className="text-xl font-bold text-cyan-400">
+          ExamRank Dashboard
+        </h1>
+        <button
+          onClick={logout}
+          className="bg-red-500 px-4 py-2 rounded"
+        >
+          Logout
+        </button>
       </div>
 
-      {/* Main Layout */}
-      <div className="max-w-7xl mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
 
-        {/* Prediction Card */}
-        <motion.div
-          initial={{ x: -50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          className="backdrop-blur-lg bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 shadow-xl"
-        >
+        <div className="bg-slate-800 p-6 rounded-lg">
 
-          <h2 className="text-base sm:text-lg md:text-xl text-cyan-400 mb-4">
+          <h2 className="text-lg mb-4 text-cyan-400">
             Enter Your Marks
           </h2>
 
           <select
-            className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg text-sm sm:text-base"
+            className="w-full mb-3 p-2 bg-slate-700 rounded"
             value={stream}
             onChange={e => setStream(e.target.value)}
           >
@@ -126,14 +110,14 @@ export default function App() {
 
           <input
             placeholder="Physics"
-            className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg"
+            className="w-full mb-3 p-2 bg-slate-700 rounded"
             value={physics}
             onChange={e => setPhysics(e.target.value)}
           />
 
           <input
             placeholder="Chemistry"
-            className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg"
+            className="w-full mb-3 p-2 bg-slate-700 rounded"
             value={chemistry}
             onChange={e => setChemistry(e.target.value)}
           />
@@ -141,7 +125,7 @@ export default function App() {
           {stream === "PCM" && (
             <input
               placeholder="Maths"
-              className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg"
+              className="w-full mb-3 p-2 bg-slate-700 rounded"
               value={maths}
               onChange={e => setMaths(e.target.value)}
             />
@@ -150,64 +134,42 @@ export default function App() {
           {stream === "PCB" && (
             <input
               placeholder="Biology"
-              className="w-full mb-3 p-2 sm:p-3 bg-slate-900 border border-slate-700 rounded-lg"
+              className="w-full mb-3 p-2 bg-slate-700 rounded"
               value={biology}
               onChange={e => setBiology(e.target.value)}
             />
           )}
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button
             disabled={loading}
             onClick={predictRank}
-            className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base disabled:opacity-50"
+            className="w-full bg-cyan-500 py-2 rounded mt-2 disabled:opacity-50"
           >
             {loading ? "Predicting..." : "Predict Rank"}
-          </motion.button>
+          </button>
 
-          {/* Result */}
+          {error && (
+            <div className="mt-3 text-red-400">
+              {error}
+            </div>
+          )}
+
           {rank !== null && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-4 sm:mt-6 p-3 sm:p-4 rounded-lg bg-gradient-to-r from-green-500/20 to-cyan-500/20 text-sm sm:text-base"
-            >
+            <div className="mt-4 bg-green-900/40 p-4 rounded">
               <p>Total Marks: {totalMarks}</p>
               <p>Rank: {rank}</p>
               <p>Percentile: {percentile}%</p>
               <p>Confidence: {confidence}%</p>
-            </motion.div>
-          )}
-
-          {/* Chart */}
-          {rank !== null && (
-            <div className="mt-4">
-              <RankChart
-                marks={totalMarks}
-                rank={rank}
-              />
             </div>
           )}
 
-        </motion.div>
+        </div>
 
-        {/* History */}
-        <motion.div
-          initial={{ x: 50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          className="backdrop-blur-lg bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6 shadow-xl"
-        >
-          <h2 className="text-base sm:text-lg md:text-xl text-cyan-400 mb-4">
-            History
-          </h2>
-
-          <div className="h-[300px] sm:h-[400px] lg:h-[500px] overflow-y-auto">
-            <History />
-          </div>
-        </motion.div>
+        <div className="bg-slate-800 p-6 rounded-lg">
+          <History refresh={refreshHistory} />
+        </div>
 
       </div>
-    </motion.div>
+    </div>
   );
 }
