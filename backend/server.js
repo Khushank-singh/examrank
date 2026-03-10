@@ -99,30 +99,35 @@ const TOTAL_JEE_STUDENTS = 1200000;
 
 // ==============================
 // MARKS VS RANK TABLES
+// (More realistic mapping)
 // ==============================
 
 const NEET_TABLE = [
-[720,1],[710,15],[700,75],[690,250],[680,800],[670,2000],
-[660,5000],[650,9000],[640,15000],[630,22000],[620,32000],
-[610,45000],[600,65000],[580,110000],[560,180000],[540,260000],
+[720,1],[710,20],[700,80],[690,300],[680,900],[670,2500],
+[660,6000],[650,10000],[640,18000],[630,26000],[620,38000],
+[610,55000],[600,75000],[580,120000],[560,180000],[540,260000],
 [520,360000],[500,500000],[480,700000],[460,950000],[440,1200000],
-[420,1450000],[400,1700000],[380,1900000],[350,2100000],[300,2250000]
+[420,1500000],[400,1750000],[380,1950000],[350,2150000],[300,2300000]
 ];
 
 const JEE_TABLE = [
-[300,1],[290,50],[280,200],[270,600],[260,1500],[250,3200],
-[240,6000],[230,10000],[220,16000],[210,24000],[200,35000],
-[190,48000],[180,65000],[170,85000],[160,110000],[150,140000],
-[140,180000],[130,220000],[120,270000],[110,320000],[100,380000]
+[300,1],[290,50],[280,200],[270,600],
+[260,1500],[250,3200],[240,6000],
+[230,10000],[220,16000],[210,24000],
+[200,35000],[190,48000],[180,65000],
+[170,85000],[160,110000],[150,140000],
+[140,180000],[130,220000],[120,270000],
+[110,320000],[100,380000]
 ];
 
 // ==============================
 // INTERPOLATION FUNCTION
 // ==============================
 
-function interpolate(marks, table) {
+function interpolate(marks, table, totalStudents) {
 
   if (marks >= table[0][0]) return table[0][1];
+
   if (marks <= table[table.length - 1][0])
     return table[table.length - 1][1];
 
@@ -131,16 +136,17 @@ function interpolate(marks, table) {
     const [m1, r1] = table[i];
     const [m2, r2] = table[i + 1];
 
-    if (m1 >= marks && marks >= m2) {
+    if (marks <= m1 && marks >= m2) {
 
       const ratio = (marks - m2) / (m1 - m2);
       const rank = r2 + ratio * (r1 - r2);
 
-      return Math.floor(rank);
+      // Clamp rank inside valid range
+      return Math.max(1, Math.min(Math.floor(rank), totalStudents));
     }
   }
 
-  return table[table.length - 1][1];
+  return totalStudents;
 }
 
 // ==============================
@@ -215,14 +221,14 @@ app.post("/predict", authMiddleware, async (req, res) => {
     if (stream === "PCM") {
 
       total = Number(physics) + Number(chemistry) + Number(maths);
-      rank = interpolate(total, JEE_TABLE);
+      rank = interpolate(total, JEE_TABLE, TOTAL_JEE_STUDENTS);
       percentile = calculatePercentile(rank, TOTAL_JEE_STUDENTS);
       confidence = calculateConfidence(total, JEE_TABLE);
 
     } else if (stream === "PCB") {
 
       total = Number(physics) + Number(chemistry) + Number(biology);
-      rank = interpolate(total, NEET_TABLE);
+      rank = interpolate(total, NEET_TABLE, TOTAL_NEET_STUDENTS);
       percentile = calculatePercentile(rank, TOTAL_NEET_STUDENTS);
       confidence = calculateConfidence(total, NEET_TABLE);
 
