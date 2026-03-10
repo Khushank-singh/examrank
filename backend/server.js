@@ -1,16 +1,29 @@
+
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 
 // PostgreSQL connection
 const pool = require("./db");
 
-// import auth routes
+// routes
 const authRoutes = require("./auth");
-
-// import auth middleware
 const authMiddleware = require("./authMiddleware");
 
 const app = express();
+
+// ==============================
+// SECURITY - RATE LIMIT
+// ==============================
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100
+});
+
+app.use(limiter);
 
 // ==============================
 // CORS CONFIGURATION
@@ -22,55 +35,60 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: true,
+  origin: allowedOrigins,
   credentials: true
 }));
 
 app.use(express.json());
 
 // ==============================
-// CREATE TABLES (AUTO)
+// CREATE TABLES
 // ==============================
 
-// CREATE USERS TABLE FIRST
-pool.query(`
-CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  is_verified BOOLEAN DEFAULT FALSE,
-  verification_token TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-`)
-.then(() => {
+async function createTables() {
 
-  console.log("Users table ready");
+  try {
 
-  // CREATE PREDICTIONS TABLE AFTER USERS
-  return pool.query(`
-  CREATE TABLE IF NOT EXISTS predictions (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    physics INTEGER,
-    chemistry INTEGER,
-    maths INTEGER,
-    biology INTEGER,
-    stream TEXT,
-    total INTEGER,
-    predicted_rank INTEGER,
-    percentile NUMERIC,
-    confidence NUMERIC,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-  `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        is_verified BOOLEAN DEFAULT FALSE,
+        verification_token TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-})
-.then(() => {
-  console.log("Predictions table ready");
-})
-.catch(err => console.error("Table creation error:", err));
+    console.log("Users table ready");
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS predictions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        physics INTEGER,
+        chemistry INTEGER,
+        maths INTEGER,
+        biology INTEGER,
+        stream TEXT,
+        total INTEGER,
+        predicted_rank INTEGER,
+        percentile NUMERIC,
+        confidence NUMERIC,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    console.log("Predictions table ready");
+
+  } catch (error) {
+    console.error("Table creation error:", error);
+  }
+
+}
+
+createTables();
 
 // ==============================
 // TOTAL STUDENTS
@@ -84,18 +102,18 @@ const TOTAL_JEE_STUDENTS = 1200000;
 // ==============================
 
 const NEET_TABLE = [
-  [720, 1],[710,15],[700,75],[690,250],[680,800],[670,2000],
-  [660,5000],[650,9000],[640,15000],[630,22000],[620,32000],
-  [610,45000],[600,65000],[580,110000],[560,180000],[540,260000],
-  [520,360000],[500,500000],[480,700000],[460,950000],[440,1200000],
-  [420,1450000],[400,1700000],[380,1900000],[350,2100000],[300,2250000]
+[720,1],[710,15],[700,75],[690,250],[680,800],[670,2000],
+[660,5000],[650,9000],[640,15000],[630,22000],[620,32000],
+[610,45000],[600,65000],[580,110000],[560,180000],[540,260000],
+[520,360000],[500,500000],[480,700000],[460,950000],[440,1200000],
+[420,1450000],[400,1700000],[380,1900000],[350,2100000],[300,2250000]
 ];
 
 const JEE_TABLE = [
-  [300,1],[290,50],[280,200],[270,600],[260,1500],[250,3200],
-  [240,6000],[230,10000],[220,16000],[210,24000],[200,35000],
-  [190,48000],[180,65000],[170,85000],[160,110000],[150,140000],
-  [140,180000],[130,220000],[120,270000],[110,320000],[100,380000]
+[300,1],[290,50],[280,200],[270,600],[260,1500],[250,3200],
+[240,6000],[230,10000],[220,16000],[210,24000],[200,35000],
+[190,48000],[180,65000],[170,85000],[160,110000],[150,140000],
+[140,180000],[130,220000],[120,270000],[110,320000],[100,380000]
 ];
 
 // ==============================
@@ -149,10 +167,22 @@ function calculateConfidence(marks, table) {
 }
 
 // ==============================
-// AUTH ROUTES
+// ROUTES
 // ==============================
 
 app.use("/auth", authRoutes);
+
+// ==============================
+// HEALTH CHECK
+// ==============================
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "ExamRank Backend",
+    time: new Date()
+  });
+});
 
 // ==============================
 // TEST ROUTE
@@ -233,7 +263,7 @@ app.post("/predict", authMiddleware, async (req, res) => {
 });
 
 // ==============================
-// HISTORY ROUTE
+// HISTORY (FOR CHARTS)
 // ==============================
 
 app.get("/history", authMiddleware, async (req, res) => {
@@ -243,31 +273,22 @@ app.get("/history", authMiddleware, async (req, res) => {
     const userId = req.userId;
 
     const result = await pool.query(
-      `SELECT id,
-              physics,
-              chemistry,
-              maths,
-              biology,
-              stream,
-              total,
+      `SELECT total,
               predicted_rank,
               percentile,
               confidence,
               created_at
        FROM predictions
        WHERE user_id = $1
-       ORDER BY id DESC
-       LIMIT 8`,
+       ORDER BY created_at ASC`,
       [userId]
     );
 
     res.json(result.rows);
 
   } catch (error) {
-
-    console.error("Database error:", error);
+    console.error("History error:", error);
     res.status(500).json({ error: "Database error" });
-
   }
 
 });
@@ -279,5 +300,5 @@ app.get("/history", authMiddleware, async (req, res) => {
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log("Server running on port " + PORT);
 });

@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import History from "./History";
 import Auth from "./Auth";
+import RankChart from "./RankChart";
 
 export default function App() {
 
@@ -64,7 +66,6 @@ export default function App() {
       setConfidence(data.confidence);
       setTotalMarks(data.total_marks);
 
-      // 🔥 refresh history instantly
       setRefreshHistory(prev => !prev);
 
     } catch (err) {
@@ -79,10 +80,13 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-900 text-white p-6">
 
+      {/* Header */}
+
       <div className="flex justify-between mb-6">
         <h1 className="text-xl font-bold text-cyan-400">
           ExamRank Dashboard
         </h1>
+
         <button
           onClick={logout}
           className="bg-red-500 px-4 py-2 rounded"
@@ -92,6 +96,8 @@ export default function App() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
+
+        {/* Prediction Panel */}
 
         <div className="bg-slate-800 p-6 rounded-lg">
 
@@ -154,22 +160,92 @@ export default function App() {
             </div>
           )}
 
+          {/* Prediction Result */}
+
           {rank !== null && (
-            <div className="mt-4 bg-green-900/40 p-4 rounded">
-              <p>Total Marks: {totalMarks}</p>
-              <p>Rank: {rank}</p>
-              <p>Percentile: {percentile}%</p>
-              <p>Confidence: {confidence}%</p>
-            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 bg-slate-900 border border-slate-700 p-5 rounded-lg"
+            >
+
+              <h3 className="text-lg text-cyan-400 mb-4">
+                Prediction Result
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div className="bg-slate-800 p-3 rounded">
+                  <p className="text-sm text-gray-400">Total Marks</p>
+                  <p className="text-xl font-bold text-cyan-300">
+                    {totalMarks}
+                  </p>
+                </div>
+
+                <div className="bg-slate-800 p-3 rounded">
+                  <p className="text-sm text-gray-400">Predicted Rank</p>
+                  <p className="text-xl font-bold text-yellow-400">
+                    {rank}
+                  </p>
+                </div>
+
+                <div className="bg-slate-800 p-3 rounded">
+                  <p className="text-sm text-gray-400">Percentile</p>
+                  <p className="text-xl font-bold text-green-400">
+                    {percentile}%
+                  </p>
+                </div>
+
+                <div className="bg-slate-800 p-3 rounded">
+                  <p className="text-sm text-gray-400">Confidence</p>
+                  <p className="text-xl font-bold text-purple-400">
+                    {confidence}%
+                  </p>
+                </div>
+
+              </div>
+
+              {/* Performance Progress */}
+
+              <div className="mt-5">
+
+                <p className="text-sm mb-2 text-gray-400">
+                  Performance Indicator
+                </p>
+
+                <div className="w-full bg-slate-700 rounded-full h-3">
+
+                  <div
+                    className="bg-cyan-400 h-3 rounded-full"
+                    style={{ width: `${percentile}%` }}
+                  />
+
+                </div>
+
+              </div>
+
+              {/* Rank Chart */}
+
+              <RankChart
+                marks={totalMarks}
+                rank={rank}
+              />
+
+            </motion.div>
+
           )}
 
         </div>
+
+        {/* History Panel */}
 
         <div className="bg-slate-800 p-6 rounded-lg">
           <History refresh={refreshHistory} />
         </div>
 
       </div>
+
     </div>
   );
 }

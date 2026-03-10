@@ -8,28 +8,19 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-
 export default function RankChart({ marks, rank }) {
 
-  if (!marks || !rank) return null;
+  if (marks == null || rank == null) return null;
 
   const data = [
-
     { marks: marks - 50, rank: Math.round(rank * 2) },
-
     { marks: marks - 25, rank: Math.round(rank * 1.5) },
-
     { marks: marks, rank: rank },
-
     { marks: marks + 25, rank: Math.round(rank * 0.7) },
-
     { marks: marks + 50, rank: Math.round(rank * 0.4) }
-
   ];
 
-
   return (
-
     <div className="mt-6">
 
       <h3 className="text-lg text-cyan-400 mb-2">
@@ -60,7 +51,5 @@ export default function RankChart({ marks, rank }) {
       </ResponsiveContainer>
 
     </div>
-
   );
-
 }
