@@ -1,8 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 
-// import SQLite database
-const db = require("./db");
+// PostgreSQL connection
+const pool = require("./db");
 
 // import auth routes
 const authRoutes = require("./auth");
@@ -29,6 +29,43 @@ app.use(cors({
 app.use(express.json());
 
 // ==============================
+// CREATE TABLES (AUTO)
+// ==============================
+
+pool.query(`
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  is_verified BOOLEAN DEFAULT FALSE,
+  verification_token TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`)
+.then(() => console.log("Users table ready"))
+.catch(err => console.error("Users table error:", err));
+
+pool.query(`
+CREATE TABLE IF NOT EXISTS predictions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  physics INTEGER,
+  chemistry INTEGER,
+  maths INTEGER,
+  biology INTEGER,
+  stream TEXT,
+  total INTEGER,
+  predicted_rank INTEGER,
+  percentile NUMERIC,
+  confidence NUMERIC,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`)
+.then(() => console.log("Predictions table ready"))
+.catch(err => console.error("Predictions table error:", err));
+
+// ==============================
 // TOTAL STUDENTS
 // ==============================
 
@@ -40,42 +77,18 @@ const TOTAL_JEE_STUDENTS = 1200000;
 // ==============================
 
 const NEET_TABLE = [
-  [720, 1],
-  [710, 15],
-  [700, 75],
-  [690, 250],
-  [680, 800],
-  [670, 2000],
-  [660, 5000],
-  [650, 9000],
-  [640, 15000],
-  [630, 22000],
-  [620, 32000],
-  [610, 45000],
-  [600, 65000],
-  [580, 110000],
-  [560, 180000],
-  [540, 260000],
-  [520, 360000],
-  [500, 500000],
-  [480, 700000],
-  [460, 950000],
-  [440, 1200000],
-  [420, 1450000],
-  [400, 1700000],
-  [380, 1900000],
-  [350, 2100000],
-  [300, 2250000]
+  [720, 1],[710,15],[700,75],[690,250],[680,800],[670,2000],
+  [660,5000],[650,9000],[640,15000],[630,22000],[620,32000],
+  [610,45000],[600,65000],[580,110000],[560,180000],[540,260000],
+  [520,360000],[500,500000],[480,700000],[460,950000],[440,1200000],
+  [420,1450000],[400,1700000],[380,1900000],[350,2100000],[300,2250000]
 ];
 
 const JEE_TABLE = [
-  [300, 1], [290, 50], [280, 200], [270, 600],
-  [260, 1500], [250, 3200], [240, 6000],
-  [230, 10000], [220, 16000], [210, 24000],
-  [200, 35000], [190, 48000], [180, 65000],
-  [170, 85000], [160, 110000], [150, 140000],
-  [140, 180000], [130, 220000], [120, 270000],
-  [110, 320000], [100, 380000]
+  [300,1],[290,50],[280,200],[270,600],[260,1500],[250,3200],
+  [240,6000],[230,10000],[220,16000],[210,24000],[200,35000],
+  [190,48000],[180,65000],[170,85000],[160,110000],[150,140000],
+  [140,180000],[130,220000],[120,270000],[110,320000],[100,380000]
 ];
 
 // ==============================
@@ -143,10 +156,10 @@ app.get("/", (req, res) => {
 });
 
 // ==============================
-// PREDICT ROUTE (PROTECTED)
+// PREDICT ROUTE
 // ==============================
 
-app.post("/predict", authMiddleware, (req, res) => {
+app.post("/predict", authMiddleware, async (req, res) => {
 
   try {
 
@@ -180,11 +193,10 @@ app.post("/predict", authMiddleware, (req, res) => {
       return res.status(400).json({ error: "Invalid stream" });
     }
 
-    // SAVE INTO DATABASE
-    db.run(
+    await pool.query(
       `INSERT INTO predictions
       (user_id, physics, chemistry, maths, biology, stream, total, predicted_rank, percentile, confidence)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         userId,
         physics,
@@ -196,14 +208,7 @@ app.post("/predict", authMiddleware, (req, res) => {
         rank,
         percentile,
         confidence
-      ],
-      function (err) {
-        if (err) {
-          console.error("Database error:", err.message);
-        } else {
-          console.log("Prediction saved for user:", userId);
-        }
-      }
+      ]
     );
 
     res.json({
@@ -214,47 +219,49 @@ app.post("/predict", authMiddleware, (req, res) => {
     });
 
   } catch (error) {
-    console.error("Prediction error:", error.message);
+    console.error("Prediction error:", error);
     res.status(500).json({ error: "Prediction failed" });
   }
 
 });
 
 // ==============================
-// HISTORY ROUTE (PROTECTED)
+// HISTORY ROUTE
 // ==============================
 
-app.get("/history", authMiddleware, (req, res) => {
+app.get("/history", authMiddleware, async (req, res) => {
 
-  const userId = req.userId;
+  try {
 
-  db.all(
-    `SELECT id,
-            physics,
-            chemistry,
-            maths,
-            biology,
-            stream,
-            total,
-            predicted_rank,
-            percentile,
-            confidence,
-            created_at
-     FROM predictions
-     WHERE user_id = ?
-     ORDER BY id DESC
-     LIMIT 8`,
-    [userId],
-    (err, rows) => {
+    const userId = req.userId;
 
-      if (err) {
-        console.error("Database error:", err.message);
-        return res.status(500).json({ error: "Database error" });
-      }
+    const result = await pool.query(
+      `SELECT id,
+              physics,
+              chemistry,
+              maths,
+              biology,
+              stream,
+              total,
+              predicted_rank,
+              percentile,
+              confidence,
+              created_at
+       FROM predictions
+       WHERE user_id = $1
+       ORDER BY id DESC
+       LIMIT 8`,
+      [userId]
+    );
 
-      res.json(rows);
-    }
-  );
+    res.json(result.rows);
+
+  } catch (error) {
+
+    console.error("Database error:", error);
+    res.status(500).json({ error: "Database error" });
+
+  }
 
 });
 
