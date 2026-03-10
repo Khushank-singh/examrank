@@ -32,6 +32,7 @@ app.use(express.json());
 // CREATE TABLES (AUTO)
 // ==============================
 
+// CREATE USERS TABLE FIRST
 pool.query(`
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
@@ -43,27 +44,33 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `)
-.then(() => console.log("Users table ready"))
-.catch(err => console.error("Users table error:", err));
+.then(() => {
 
-pool.query(`
-CREATE TABLE IF NOT EXISTS predictions (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id),
-  physics INTEGER,
-  chemistry INTEGER,
-  maths INTEGER,
-  biology INTEGER,
-  stream TEXT,
-  total INTEGER,
-  predicted_rank INTEGER,
-  percentile NUMERIC,
-  confidence NUMERIC,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-`)
-.then(() => console.log("Predictions table ready"))
-.catch(err => console.error("Predictions table error:", err));
+  console.log("Users table ready");
+
+  // CREATE PREDICTIONS TABLE AFTER USERS
+  return pool.query(`
+  CREATE TABLE IF NOT EXISTS predictions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    physics INTEGER,
+    chemistry INTEGER,
+    maths INTEGER,
+    biology INTEGER,
+    stream TEXT,
+    total INTEGER,
+    predicted_rank INTEGER,
+    percentile NUMERIC,
+    confidence NUMERIC,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  `);
+
+})
+.then(() => {
+  console.log("Predictions table ready");
+})
+.catch(err => console.error("Table creation error:", err));
 
 // ==============================
 // TOTAL STUDENTS
