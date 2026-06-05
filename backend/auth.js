@@ -28,18 +28,14 @@ router.post("/signup", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationToken = crypto.randomBytes(32).toString("hex");
 
     await pool.query(
-      "INSERT INTO users (name, email, password, is_verified, verification_token) VALUES ($1,$2,$3,$4,$5)",
-      [name, email, hashedPassword, false, verificationToken]
+      "INSERT INTO users (name, email, password, is_verified) VALUES ($1,$2,$3,$4)",
+      [name, email, hashedPassword, true]
     );
 
-    const verifyLink = BACKEND_URL + "/auth/verify/" + verificationToken;
-
     res.json({
-      message: "Signup successful. Please verify your account.",
-      verifyLink: verifyLink
+      message: "Signup successful. You can now log in."
     });
 
   } catch (error) {
@@ -109,16 +105,7 @@ router.post("/login", async (req, res) => {
 
     const user = result.rows[0];
 
-    if (!user.is_verified) {
-
-      const verifyLink = BACKEND_URL + "/auth/verify/" + user.verification_token;
-
-      return res.status(403).json({
-        error: "Please verify your account before logging in.",
-        verifyLink: verifyLink
-      });
-
-    }
+    // Email verification removed — all accounts are active immediately
 
     const validPassword = await bcrypt.compare(password, user.password);
 
