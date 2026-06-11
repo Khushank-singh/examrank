@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = "examrank_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET || "examrank_dev_secret";
 
 function authMiddleware(req, res, next) {
 
@@ -26,14 +26,16 @@ function authMiddleware(req, res, next) {
 
     try {
 
-        const decoded = jwt.verify(token.trim(), JWT_SECRET);
+        const decoded = jwt.verify(
+            token.trim(),
+            JWT_SECRET
+        );
 
         req.userId = decoded.userId;
 
         next();
 
-    }
-    catch (error) {
+    } catch (error) {
 
         console.log("JWT Error:", error.message);
 

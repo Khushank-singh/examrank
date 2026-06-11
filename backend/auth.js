@@ -1,24 +1,18 @@
-
 const express = require("express");
 const router = express.Router();
 const pool = require("./db");
-
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
 
-// ======================
-// ENV CONFIG
-// ======================
 const SECRET = process.env.JWT_SECRET || "examrank_dev_secret";
 
-// Production URLs
-const FRONTEND_URL = "https://examrank-ga7km4wes-khushank-singhs-projects.vercel.app";
-const BACKEND_URL = "https://examrank.onrender.com";
-
-// ======================
-// SIGNUP
-// ======================
+/*
+|--------------------------------------------------------------------------
+| Signup
+|--------------------------------------------------------------------------
+| New users are created as verified users.
+| Email verification is no longer required.
+*/
 router.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -27,11 +21,21 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ error: "All fields required" });
     }
 
+    // Check if email already exists
+    const existing = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await pool.query(
-      "INSERT INTO users (name, email, password, is_verified) VALUES ($1,$2,$3,$4)",
-      [name, email, hashedPassword, true]
+      "INSERT INTO users (name, email, password, is_verified, verification_token) VALUES ($1,$2,$3,$4,$5)",
+      [name, email, hashedPassword, true, null]
     );
 
     res.json({
@@ -48,9 +52,12 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// ======================
-// EMAIL VERIFY
-// ======================
+/*
+|--------------------------------------------------------------------------
+| Verify Email
+|--------------------------------------------------------------------------
+| Kept for backward compatibility with old verification links.
+*/
 router.get("/verify/:token", async (req, res) => {
   const token = req.params.token;
 
@@ -61,7 +68,7 @@ router.get("/verify/:token", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(400).send("Invalid or expired token.");
+      return res.status(400).send("Token already used or invalid.");
     }
 
     const user = result.rows[0];
@@ -71,7 +78,7 @@ router.get("/verify/:token", async (req, res) => {
       [user.id]
     );
 
-    res.redirect(FRONTEND_URL);
+    res.send("Account verified. You can now log in.");
 
   } catch (error) {
     console.error(error);
@@ -79,11 +86,13 @@ router.get("/verify/:token", async (req, res) => {
   }
 });
 
-// ======================
-// LOGIN
-// ======================
+/*
+|--------------------------------------------------------------------------
+| Login
+|--------------------------------------------------------------------------
+| All users are treated as verified.
+*/
 router.post("/login", async (req, res) => {
-
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -91,28 +100,21 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-
     const result = await pool.query(
       "SELECT * FROM users WHERE email = $1",
       [email]
     );
 
     if (result.rows.length === 0) {
-      return res.status(400).json({
-        error: "Invalid email or password"
-      });
+      return res.status(400).json({ error: "Invalid email or password" });
     }
 
     const user = result.rows[0];
 
-    // Email verification removed — all accounts are active immediately
-
     const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
-      return res.status(400).json({
-        error: "Invalid email or password"
-      });
+      return res.status(400).json({ error: "Invalid email or password" });
     }
 
     const token = jwt.sign(
@@ -123,15 +125,13 @@ router.post("/login", async (req, res) => {
 
     res.json({
       message: "Login successful",
-      token: token
+      token
     });
 
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
   }
-
 });
 
 module.exports = router;
-

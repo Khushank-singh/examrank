@@ -1,6 +1,5 @@
-node_modules/
-venv/
-__pycache__/
-*.db
-.env
-dist/
+frontend/node_modules
+backend/node_modules
+frontend/dist
+frontend/.env
+backend/.env
